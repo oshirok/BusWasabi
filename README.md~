@@ -1,0 +1,7 @@
+# BusWasabi
+
+BusWasabi is a WebApp that displays the locations of busses in Seattle determined by GPS recievers. When a bus is selected, BusWasabi also displays the predicted position of the bus and simulates the movement of the bus based on schedule and schedule deviation data.
+
+Technologgies Used:
+
+ge
