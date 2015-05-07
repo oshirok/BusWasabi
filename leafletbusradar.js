@@ -134,6 +134,7 @@ function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
       });
   }
 
+// Converts date to HH:MM format
 function toTimeString(time) {
   var date = new Date(time);
   var hours = date.getHours();
@@ -143,15 +144,9 @@ function toTimeString(time) {
   return hours + ":" + minutes;
 }
 
+// Splits a polyline along the point
 function getProgressPolyline2(polyline, point) {
   var x1 = L.polyline(L.GeometryUtil.extract(map, polyline, 0, L.GeometryUtil.locateOnLine(map, polyline, point)));
   var x2 = L.polyline(L.GeometryUtil.extract(map, polyline, L.GeometryUtil.locateOnLine(map, polyline, point), 1));
   return [x1, x2];
 }
-
-function removeLines() {
-  for(var i = 0; i < layergroup.getLayers().length; i++) {
-    map.removeLayer(layergroup.getLayesr()[i]);
-  }
-}
-
