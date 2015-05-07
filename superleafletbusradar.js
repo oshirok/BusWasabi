@@ -13,8 +13,15 @@ $(document).ready(function() {
   });
 
   map.on('zoomend', function() {
-    console.log(activeMarker.curPoint);
-    drawLineOnRoute(activeMarker.tripId, activeMarker.lastUpdateTime, activeMarker.curPoint);
+    console.log("HELLO");
+    layergroup.clearLayers();
+
+    Object.keys(busses).forEach(function (key) { 
+        var value = busses[key]
+        // iteration code
+        marker = busses[key].gmarker;
+        drawBusOnRouteOnly(marker.tripId, marker.lastUpdateTime, marker.curPoint)
+    })
   });
 
   layergroup = L.layerGroup();
@@ -84,7 +91,8 @@ function drawBusses() {
               marker.bindPopup(marker.popupContent);
 
               function onClick(e) {drawLineOnRoute(this.tripId, this.lastUpdateTime, this.curPoint); console.log(this.routeId); console.log(this.tripId); activeMarker = this}
-              marker.addTo(map);
+              // marker.addTo(map);
+              drawBusOnRouteOnly(marker.tripId, marker.lastUpdateTime, marker.curPoint);
 
               var bus = {gmarker: marker, bus_id: data.data.list[i].vehicleId};
               busses[data.data.list[i].vehicleId] = bus;
@@ -105,7 +113,7 @@ function getDistance(data) {
   var prevStopTime = data.data.entry.schedule.stopTimes[0].arrivalTime;
   var prevStopDist = data.data.entry.schedule.stopTimes[0].distanceAlongTrip;
   var i = 0;
-  while(data.data.entry.schedule.stopTimes[i].stopId != nextStopId) {
+  while(data.data.entry.schedule.stopTimes[i].stopId != nextStopId && i < data.data.entry.schedule.stopTimes.length) {
     prevStopId = data.data.entry.schedule.stopTimes[i].stopId;
     prevStopTime = data.data.entry.schedule.stopTimes[0].arrivalTime;
     prevStopDist = data.data.entry.schedule.stopTimes[0].distanceAlongTrip;
@@ -145,7 +153,7 @@ function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
           var date = new Date();
           var currTime = date.getTime();
           $.getJSON('http://api.onebusaway.org/api/where/shape/' + shapeId + '.json?key=TEST&callback=?', function(data) {
-              var polyline = L.Polyline.fromEncoded(data.data.entry.points, {color: 'red'});
+              var polyline = L.Polyline.fromEncoded(data.data.entry.points, {color: 'red'}).addTo(map);
 
             layergroup.addLayer(polyline);
             var progressPolylines = getProgressPolyline2(polyline, curpoint);
@@ -175,6 +183,50 @@ function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
             layergroup.addLayer(animatedMarker);
             layergroup.addLayer(progressPolylines[0]);
 
+            layergroup.addTo(map);
+          });
+      });
+  }
+
+function drawBusOnRouteOnly(tripId, lastUpdateTime, curpoint) {
+      var poly = L.Polyline();
+      $.getJSON('http://api.onebusaway.org/api/where/trip-details/' + tripId + '.json?key=TEST&version=2&callback=?', function(tripdata) {
+          console.log(tripId);
+          var shapeId = tripdata.data.references.trips[0].shapeId;
+          var lastStopTime = tripdata.data.entry.schedule.stopTimes[tripdata.data.entry.schedule.stopTimes.length - 1].arrivalTime * 1000 + tripdata.data.entry.serviceDate + parseInt(tripdata.data.entry.status.nextStopTimeOffset) * 1000;
+          var totalDistance = tripdata.data.entry.status.totalDistanceAlongTrip;
+          var date = new Date();
+          var currTime = date.getTime();
+          $.getJSON('http://api.onebusaway.org/api/where/shape/' + shapeId + '.json?key=TEST&callback=?', function(data) {
+            var polyline = L.Polyline.fromEncoded(data.data.entry.points, {color: 'red'});
+
+            // layergroup.addLayer(polyline);
+            var progressPolylines = getProgressPolyline2(polyline, curpoint);
+            // layergroup.addLayer(progressPolylines[0]);
+
+            var polylineToSplit = progressPolylines[1];
+            var pointToSplitOn = L.GeometryUtil.interpolateOnLine(map, polylineToSplit, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime));
+            var line1 = L.polyline(L.GeometryUtil.extract(map, polylineToSplit, 0, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime)));
+            var line2 = L.polyline(L.GeometryUtil.extract(map, polylineToSplit, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime), 1));
+
+            var estimatedPercentageOfTripCompleted = L.GeometryUtil.locateOnLine(map, polyline, curpoint);
+            var percentageOfLUTtoLSTCompleted = (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime);
+
+            var myIcon = L.icon({
+              iconUrl: 'bus.png',
+              iconAnchor: [20, 10]
+            });
+
+            var animatedMarker = L.animatedMarker(line2.getLatLngs(), {
+              icon: myIcon,
+              distance: getDistance(tripdata),
+              interval: getTime(tripdata)
+              // distance: 0.01 * totalDistance * (1 - estimatedPercentageOfTripCompleted) * (1 - percentageOfLUTtoLSTCompleted),  // meters
+              // interval: 0.01 * (lastStopTime - currTime), // milliseconds
+            });
+
+            layergroup.addLayer(animatedMarker);
+            // layergroup.addLayer(progressPolylines[0]);
             layergroup.addTo(map);
           });
       });
