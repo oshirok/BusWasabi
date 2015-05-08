@@ -13,8 +13,7 @@ $(document).ready(function() {
   });
 
   map.on('zoomend', function() {
-    console.log(activeMarker.curPoint);
-    drawLineOnRoute(activeMarker.tripId, activeMarker.lastUpdateTime, activeMarker.curPoint);
+    if (activeMarker != null) drawLineOnRoute(activeMarker.tripId, activeMarker.lastUpdateTime, activeMarker.curPoint);
   });
 
   layergroup = L.layerGroup();
@@ -51,27 +50,29 @@ function drawBusses() {
       // Placing marker for each trips
       var date = new Date();
       for(var i = 0; i < data.data.list.length; i++) {
-        // console.log(data.data.list[i]);
         if(data.data.list[i].tripStatus != null && date.getTime() - data.data.list[i].lastUpdateTime < 600000) {
           var marker;
           if (busses[data.data.list[i].vehicleId] != null) {
-            marker = busses[data.data.list[i].vehicleId].gmarker;
-            marker.setLatLng(new L.LatLng(data.data.list[i].location.lat, data.data.list[i].location.lon));
-            marker.routeId = trips_hash[data.data.list[i].tripId].routeId;
-            marker.tripId = data.data.list[i].tripId;
-            marker.distance = data.data.list[i].tripStatus.scheduledDistanceAlongTrip;
-            marker.totalDistance = data.data.list[i].tripStatus.totalDistanceAlongTrip;
-            marker.curPoint = L.latLng(data.data.list[i].location.lat, data.data.list[i].location.lon);
-            marker.lastUpdateTime = data.data.list[i].lastUpdateTime;
-            marker.scheduleDeviation = data.data.list[i].tripStatus.scheduleDeviation;
-            marker.getPopup().setContent('<p><b>' + routes_hash[trips_hash[data.data.list[i].tripId].routeId] + ': ' + trips_hash[data.data.list[i].tripId].tripHeadsign + '</b><br />Last Update: ' + toTimeString(data.data.list[i].lastUpdateTime) + '<br/>' + 'Schedule Deviation: ' + data.data.list[i].tripStatus.scheduleDeviation + '</p>');
-            marker.getPopup().update();
-            if (marker == activeMarker) drawLineOnRoute(marker.tripId, marker.lastUpdateTime, marker.curPoint);
+            if (data.data.list[i].lastUpdateTime > busses[data.data.list[i].vehicleId].gmarker.lastUpdateTime) {
+              marker = busses[data.data.list[i].vehicleId].gmarker;
+              marker.setLatLng(new L.LatLng(data.data.list[i].location.lat, data.data.list[i].location.lon));
+              marker.routeId = trips_hash[data.data.list[i].tripId].routeId;
+              marker.tripId = data.data.list[i].tripId;
+              marker.distance = data.data.list[i].tripStatus.scheduledDistanceAlongTrip;
+              marker.totalDistance = data.data.list[i].tripStatus.totalDistanceAlongTrip;
+              marker.curPoint = L.latLng(data.data.list[i].location.lat, data.data.list[i].location.lon);
+              marker.lastUpdateTime = data.data.list[i].lastUpdateTime;
+              marker.scheduleDeviation = data.data.list[i].tripStatus.scheduleDeviation;
+              marker.getPopup().setContent('<p><b>' + routes_hash[trips_hash[data.data.list[i].tripId].routeId] + ': ' + trips_hash[data.data.list[i].tripId].tripHeadsign + '</b><br />Last Update: ' + '<span data-livestamp="' + data.data.list[i].lastUpdateTime/1000 + '"></span>' + '<br/>' + 'Schedule Deviation: ' + data.data.list[i].tripStatus.scheduleDeviation + '</p>');
+              marker.getPopup().update();
+              if (marker == activeMarker) drawLineOnRoute(marker.tripId, marker.lastUpdateTime, marker.curPoint);
+            }
           }
           else {
               var temp_date = new Date(data.data.list[i].lastUpdateTime);
               var cur_date = new Date();
 
+              // Construct the marker and save data into the marker
               var marker = L.marker([data.data.list[i].location.lat, data.data.list[i].location.lon]).bindLabel(routes_hash[trips_hash[data.data.list[i].tripId].routeId], { noHide: true }).on('click', onClick);
               marker.routeId = trips_hash[data.data.list[i].tripId].routeId;
               marker.tripId = data.data.list[i].tripId;
@@ -80,9 +81,10 @@ function drawBusses() {
               marker.curPoint = L.latLng(data.data.list[i].location.lat, data.data.list[i].location.lon);
               marker.lastUpdateTime = data.data.list[i].lastUpdateTime;
               marker.scheduleDeviation = data.data.list[i].tripStatus.scheduleDeviation;
-              marker.popupContent = '<p><b>' + routes_hash[trips_hash[data.data.list[i].tripId].routeId] + ': ' + trips_hash[data.data.list[i].tripId].tripHeadsign + '</b><br />Last Update: ' + toTimeString(data.data.list[i].lastUpdateTime) + '<br/>' + 'Schedule Deviation: ' + data.data.list[i].tripStatus.scheduleDeviation + '</p>';
+              marker.popupContent = '<p><b>' + routes_hash[trips_hash[data.data.list[i].tripId].routeId] + ': ' + trips_hash[data.data.list[i].tripId].tripHeadsign + '</b><br />Last Update: ' + '<span data-livestamp="' + data.data.list[i].lastUpdateTime/1000 + '"></span>' + '<br/>' + 'Schedule Deviation: ' + data.data.list[i].tripStatus.scheduleDeviation + '</p>';
               marker.bindPopup(marker.popupContent);
 
+              // Click binding to draw the route
               function onClick(e) {drawLineOnRoute(this.tripId, this.lastUpdateTime, this.curPoint); console.log(this.routeId); console.log(this.tripId); activeMarker = this}
               marker.addTo(map);
 
@@ -107,8 +109,8 @@ function getDistance(data) {
   var i = 0;
   while(data.data.entry.schedule.stopTimes[i].stopId != nextStopId) {
     prevStopId = data.data.entry.schedule.stopTimes[i].stopId;
-    prevStopTime = data.data.entry.schedule.stopTimes[0].arrivalTime;
-    prevStopDist = data.data.entry.schedule.stopTimes[0].distanceAlongTrip;
+    prevStopTime = data.data.entry.schedule.stopTimes[i].arrivalTime;
+    prevStopDist = data.data.entry.schedule.stopTimes[i].distanceAlongTrip;
     i++;
   }
   nextStopTime = data.data.entry.schedule.stopTimes[i].arrivalTime;
@@ -125,7 +127,7 @@ function getTime(data) {
   var i = 0;
   while(data.data.entry.schedule.stopTimes[i].stopId != nextStopId) {
     prevStopId = data.data.entry.schedule.stopTimes[i].stopId;
-    prevStopTime = data.data.entry.schedule.stopTimes[0].arrivalTime;
+    prevStopTime = data.data.entry.schedule.stopTimes[i].arrivalTime;
     i++;
   }
   nextStopTime = data.data.entry.schedule.stopTimes[i].arrivalTime;
@@ -145,11 +147,12 @@ function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
           var date = new Date();
           var currTime = date.getTime();
           $.getJSON('http://api.onebusaway.org/api/where/shape/' + shapeId + '.json?key=TEST&callback=?', function(data) {
-              var polyline = L.Polyline.fromEncoded(data.data.entry.points, {color: 'red'});
+              var polyline = L.Polyline.fromEncoded(data.data.entry.points);
 
-            layergroup.addLayer(polyline);
+            // layergroup.addLayer(polyline);
             var progressPolylines = getProgressPolyline2(polyline, curpoint);
-            layergroup.addLayer(progressPolylines[0]);
+            layergroup.addLayer(progressPolylines[0]); // Line showing progress made
+            layergroup.addLayer(progressPolylines[1]); // Line showing progress to make
 
             var polylineToSplit = progressPolylines[1];
             var pointToSplitOn = L.GeometryUtil.interpolateOnLine(map, polylineToSplit, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime));
@@ -171,9 +174,7 @@ function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
               // distance: 0.01 * totalDistance * (1 - estimatedPercentageOfTripCompleted) * (1 - percentageOfLUTtoLSTCompleted),  // meters
               // interval: 0.01 * (lastStopTime - currTime), // milliseconds
             });
-
             layergroup.addLayer(animatedMarker);
-            layergroup.addLayer(progressPolylines[0]);
 
             layergroup.addTo(map);
           });
@@ -192,7 +193,7 @@ function toTimeString(time) {
 
 // Splits a polyline along the point
 function getProgressPolyline2(polyline, point) {
-  var x1 = L.polyline(L.GeometryUtil.extract(map, polyline, 0, L.GeometryUtil.locateOnLine(map, polyline, point)));
-  var x2 = L.polyline(L.GeometryUtil.extract(map, polyline, L.GeometryUtil.locateOnLine(map, polyline, point), 1));
+  var x1 = L.polyline(L.GeometryUtil.extract(map, polyline, 0, L.GeometryUtil.locateOnLine(map, polyline, point)), {color: 'darkslateblue', weight: 7, opacity: 1});
+  var x2 = L.polyline(L.GeometryUtil.extract(map, polyline, L.GeometryUtil.locateOnLine(map, polyline, point), 1), {color: 'darkslateblue', dashArray: '10, 20', opacity: 1, weight: 7});
   return [x1, x2];
 }
