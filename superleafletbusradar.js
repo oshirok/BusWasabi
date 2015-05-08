@@ -137,7 +137,7 @@ function getTime(data) {
     i++;
   }
   nextStopTime = data.data.entry.schedule.stopTimes[i].arrivalTime;
-  if(i == 0) return data.data.entry.schedule.stopTimes[data.data.entry.schedule.stopTimes.length - 1].arrivalTime - prevStopTime;
+  if(i == 0) return 1000 * (data.data.entry.schedule.stopTimes[data.data.entry.schedule.stopTimes.length - 1].arrivalTime - prevStopTime);
   return (nextStopTime - prevStopTime) * 1000;
 }
 
