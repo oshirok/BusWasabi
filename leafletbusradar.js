@@ -171,8 +171,6 @@ function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
               icon: myIcon,
               distance: getDistance(tripdata),
               interval: getTime(tripdata)
-              // distance: 0.01 * totalDistance * (1 - estimatedPercentageOfTripCompleted) * (1 - percentageOfLUTtoLSTCompleted),  // meters
-              // interval: 0.01 * (lastStopTime - currTime), // milliseconds
             });
             layergroup.addLayer(animatedMarker);
 
