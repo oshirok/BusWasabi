@@ -12,10 +12,12 @@ $(document).ready(function() {
       zoom: 15
   });
 
+  // Redraw Line on zoom
   map.on('zoomend', function() {
     if (activeMarker != null) drawLineOnRoute(activeMarker.tripId, activeMarker.lastUpdateTime, activeMarker.curPoint);
   });
 
+  // Layer that holds the line and animation
   layergroup = L.layerGroup();
 
   // Loads openstreetmap tiles
@@ -147,14 +149,16 @@ function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
           var date = new Date();
           var currTime = date.getTime();
           $.getJSON('http://api.onebusaway.org/api/where/shape/' + shapeId + '.json?key=TEST&callback=?', function(data) {
-              var polyline = L.Polyline.fromEncoded(data.data.entry.points);
+            // Polyline showing the whole route
+            var polyline = L.Polyline.fromEncoded(data.data.entry.points);
 
-            // layergroup.addLayer(polyline);
-            var progressPolylines = getProgressPolyline2(polyline, curpoint);
-            layergroup.addLayer(progressPolylines[0]); // Line showing progress made
-            layergroup.addLayer(progressPolylines[1]); // Line showing progress to make
+            // Splitting the polyline by the current point
+            var progressPolylines = splitAlongPoint(polyline, curpoint);
+            layergroup.addLayer(progressPolylines[0].setStyle({color: 'darkslateblue', weight: 7, opacity: 1})); // Line showing progress made
+            layergroup.addLayer(progressPolylines[1].setStyle({color: 'darkslateblue', dashArray: '10, 20', opacity: 1, weight: 7})); // Dashed line showing progress to make
 
             var polylineToSplit = progressPolylines[1];
+
             var pointToSplitOn = L.GeometryUtil.interpolateOnLine(map, polylineToSplit, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime));
             var line1 = L.polyline(L.GeometryUtil.extract(map, polylineToSplit, 0, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime)));
             var line2 = L.polyline(L.GeometryUtil.extract(map, polylineToSplit, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime), 1));
@@ -189,9 +193,9 @@ function toTimeString(time) {
   return hours + ":" + minutes;
 }
 
-// Splits a polyline along the point
-function getProgressPolyline2(polyline, point) {
-  var x1 = L.polyline(L.GeometryUtil.extract(map, polyline, 0, L.GeometryUtil.locateOnLine(map, polyline, point)), {color: 'darkslateblue', weight: 7, opacity: 1});
-  var x2 = L.polyline(L.GeometryUtil.extract(map, polyline, L.GeometryUtil.locateOnLine(map, polyline, point), 1), {color: 'darkslateblue', dashArray: '10, 20', opacity: 1, weight: 7});
+function splitAlongPoint(polyline, point) {
+  var decimalDistance = L.GeometryUtil.locateOnLine(map, polyline, point);
+  var x1 = L.polyline(L.GeometryUtil.extract(map, polyline, 0, decimalDistance));
+  var x2 = L.polyline(L.GeometryUtil.extract(map, polyline, decimalDistance, 1));
   return [x1, x2];
 }
