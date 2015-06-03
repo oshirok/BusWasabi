@@ -9,7 +9,8 @@ $(document).ready(function() {
   // initialize the map on the "map" div with a given center and zoom
   map = L.map('map', {
       center: [47.655, -122.308],
-      zoom: 15
+      zoom: 15,
+      zoomControl:false
   });
 
   // Redraw Line on zoom
@@ -32,11 +33,20 @@ $(document).ready(function() {
   setInterval(function() {drawBusses();}, 15000);
 
   // Draws the busses on the map
-  drawBusses();
+  drawBusses(function() { 
+        $('#splashscreen').fadeOut(500);
+        console.log('faded');
+  });
+
+  L.control.locate({
+    drawCircle: true,  // controls whether a circle is drawn that shows the uncertainty about the location
+    setView: true, // automatically sets the map view to the user's location, enabled if `follow` is true
+    keepCurrentZoomLevel: true
+  }).addTo(map);
 });
 
-function drawBusses() {
-  $.getJSON('http://api.onebusaway.org/api/where/vehicles-for-agency/1.json?key=TEST&callback=?', function(data) {
+function drawBusses(callbackFunction) {
+  $.getJSON('http://api.onebusaway.org/api/where/vehicles-for-agency/1.json?key=20db9014-d735-4e1f-bace-90f3e6651fc0&callback=?', function(data) {
       // Loading into active trips into hash table
       var trips_hash = {};
       for(var i = 0; i < data.data.references.trips.length; i++) {
@@ -98,7 +108,9 @@ function drawBusses() {
         else if(busses[data.data.list[i].vehicleId] != null) {
           busses[data.data.list[i].vehicleId] = null;
         }
+
       }
+      if(callbackFunction != null) callbackFunction();
   });
 }
 
@@ -141,14 +153,14 @@ function getTime(data) {
 function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
       layergroup.clearLayers();
       var poly = L.Polyline();
-      $.getJSON('http://api.onebusaway.org/api/where/trip-details/' + tripId + '.json?key=TEST&version=2&callback=?', function(tripdata) {
+      $.getJSON('http://api.onebusaway.org/api/where/trip-details/' + tripId + '.json?key=20db9014-d735-4e1f-bace-90f3e6651fc0&version=2&callback=?', function(tripdata) {
           console.log(tripId);
           var shapeId = tripdata.data.references.trips[0].shapeId;
           var lastStopTime = tripdata.data.entry.schedule.stopTimes[tripdata.data.entry.schedule.stopTimes.length - 1].arrivalTime * 1000 + tripdata.data.entry.serviceDate + parseInt(tripdata.data.entry.status.nextStopTimeOffset) * 1000;
           var totalDistance = tripdata.data.entry.status.totalDistanceAlongTrip;
           var date = new Date();
           var currTime = date.getTime();
-          $.getJSON('http://api.onebusaway.org/api/where/shape/' + shapeId + '.json?key=TEST&callback=?', function(data) {
+          $.getJSON('http://api.onebusaway.org/api/where/shape/' + shapeId + '.json?key=20db9014-d735-4e1f-bace-90f3e6651fc0&callback=?', function(data) {
             // Polyline showing the whole route
             var polyline = L.Polyline.fromEncoded(data.data.entry.points);
 

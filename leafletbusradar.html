@@ -3,15 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="stylesheet" type="text/css" href="lib/leaflet.label.css">
 <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
-<style>
-body {
-    padding: 0;
-    margin: 0;
-}
-html, body, #map {
-    height: 100%;
-}
-</style>
+<link rel="stylesheet" type="text/css" href="style.css">
 <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
 <script src="https://code.jquery.com/jquery-2.1.4.js"></script>
 <script src="lib/leaflet.label.js"></script>
@@ -20,8 +12,20 @@ html, body, #map {
 <script src="lib/AnimatedMarker.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.2/moment.min.js"></script>
 <script src="lib/livestamp.min.js"></script>
+
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+<link rel="stylesheet" href="lib/L.Control.Locate.min.css" />
+<!--[if lt IE 9]>
+    <link rel="stylesheet" href="//rawgithub.com/domoritz/leaflet-locatecontrol/gh-pages/dist/L.Control.Locate.ie.min.css"/>
+<![endif]-->
+<script src="lib/L.Control.Locate.min.js" ></script>
+
 </head>
 <body>
+<div id="splashscreen">
+    <img id="logo" src="Logo.png"></img>
+</div>
+</div>
 <div id="map"></div>
 <script src="leafletbusradar.js"></script>
 </body>
