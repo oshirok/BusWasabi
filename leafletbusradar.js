@@ -38,12 +38,14 @@ $(document).ready(function() {
         console.log('faded');
   });
 
-  L.control.locate({
-    drawCircle: true,  // controls whether a circle is drawn that shows the uncertainty about the location
-    setView: true, // automatically sets the map view to the user's location, enabled if `follow` is true
-    keepCurrentZoomLevel: true
-  }).addTo(map);
+  map.locate({setView: true, maxZoom: 15});
+  map.on('locationfound', onLocationFound);
 });
+
+function onLocationFound(e) {
+    var radius = e.accuracy / 2;
+    L.circle(e.latlng, radius).addTo(map);
+}
 
 function drawBusses(callbackFunction) {
   $.getJSON('http://api.onebusaway.org/api/where/vehicles-for-agency/1.json?key=20db9014-d735-4e1f-bace-90f3e6651fc0&callback=?', function(data) {
@@ -121,7 +123,7 @@ function getDistance(data) {
   var prevStopTime = data.data.entry.schedule.stopTimes[0].arrivalTime;
   var prevStopDist = data.data.entry.schedule.stopTimes[0].distanceAlongTrip;
   var i = 0;
-  while(data.data.entry.schedule.stopTimes[i].stopId != nextStopId) {
+  while(i < data.data.entry.schedule.stopTimes.length - 1 && data.data.entry.schedule.stopTimes[i].stopId != nextStopId) {
     prevStopId = data.data.entry.schedule.stopTimes[i].stopId;
     prevStopTime = data.data.entry.schedule.stopTimes[i].arrivalTime;
     prevStopDist = data.data.entry.schedule.stopTimes[i].distanceAlongTrip;
@@ -139,7 +141,7 @@ function getTime(data) {
   var prevStopId = data.data.entry.schedule.stopTimes[0].stopId;
   var prevStopTime = data.data.entry.schedule.stopTimes[0].arrivalTime;
   var i = 0;
-  while(data.data.entry.schedule.stopTimes[i].stopId != nextStopId) {
+  while(i < data.data.entry.schedule.stopTimes.length - 1 && data.data.entry.schedule.stopTimes[i].stopId != nextStopId) {
     prevStopId = data.data.entry.schedule.stopTimes[i].stopId;
     prevStopTime = data.data.entry.schedule.stopTimes[i].arrivalTime;
     i++;
@@ -151,21 +153,21 @@ function getTime(data) {
 
 // Last Updated Time, Last Stop Time, Current Time
 function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
-      layergroup.clearLayers();
       var poly = L.Polyline();
       $.getJSON('http://api.onebusaway.org/api/where/trip-details/' + tripId + '.json?key=20db9014-d735-4e1f-bace-90f3e6651fc0&version=2&callback=?', function(tripdata) {
           console.log(tripId);
           var shapeId = tripdata.data.references.trips[0].shapeId;
-          var lastStopTime = tripdata.data.entry.schedule.stopTimes[tripdata.data.entry.schedule.stopTimes.length - 1].arrivalTime * 1000 + tripdata.data.entry.serviceDate + parseInt(tripdata.data.entry.status.nextStopTimeOffset) * 1000;
+          var lastStopTime = tripdata.data.entry.schedule.stopTimes[tripdata.data.entry.schedule.stopTimes.length - 1].arrivalTime * 1000 + tripdata.data.entry.serviceDate + parseInt(tripdata.data.entry.status.scheduleDeviation) * 1000;
           var totalDistance = tripdata.data.entry.status.totalDistanceAlongTrip;
           var date = new Date();
-          var currTime = date.getTime();
+          var currTime = tripdata.currentTime;
           $.getJSON('http://api.onebusaway.org/api/where/shape/' + shapeId + '.json?key=20db9014-d735-4e1f-bace-90f3e6651fc0&callback=?', function(data) {
             // Polyline showing the whole route
             var polyline = L.Polyline.fromEncoded(data.data.entry.points);
 
             // Splitting the polyline by the current point
             var progressPolylines = splitAlongPoint(polyline, curpoint);
+            layergroup.clearLayers();
             layergroup.addLayer(progressPolylines[0].setStyle({color: 'darkslateblue', weight: 7, opacity: 1})); // Line showing progress made
             layergroup.addLayer(progressPolylines[1].setStyle({color: 'darkslateblue', dashArray: '10, 20', opacity: 1, weight: 7})); // Dashed line showing progress to make
 
@@ -173,6 +175,7 @@ function drawLineOnRoute(tripId, lastUpdateTime, curpoint) {
 
             var pointToSplitOn = L.GeometryUtil.interpolateOnLine(map, polylineToSplit, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime));
             var line1 = L.polyline(L.GeometryUtil.extract(map, polylineToSplit, 0, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime)));
+            if (currTime > lastStopTime) console.log("ERROR: currTime: " + currTime + " LastStopTime: " + lastStopTime);
             var line2 = L.polyline(L.GeometryUtil.extract(map, polylineToSplit, (currTime - lastUpdateTime) / (lastStopTime - lastUpdateTime), 1));
 
             var estimatedPercentageOfTripCompleted = L.GeometryUtil.locateOnLine(map, polyline, curpoint);
