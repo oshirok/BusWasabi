@@ -37,6 +37,7 @@ $(document).ready(function() {
         $('#splashscreen').fadeOut(500);
         console.log('faded');
   });
+  drawNearbyBusses();
 
   map.locate({setView: true, maxZoom: 15});
   map.on('locationfound', onLocationFound);
@@ -45,6 +46,23 @@ $(document).ready(function() {
 function onLocationFound(e) {
     var radius = e.accuracy / 2;
     L.circle(e.latlng, radius).addTo(map);
+}
+
+function drawNearbyBusses(callbackFunction) {
+  $.getJSON('http://api.pugetsound.onebusaway.org/api/where/trips-for-location.xml?key=TEST&lat=47.653&lon=-122.307&latSpan=0.008&lonSpan=0.008', function(data) {
+      var trips_hash = {};
+      for(var i = 0; i < data.data.references.trips.length; i++) {
+        trips_hash[data.data.references.trips[i].id] = {routeId: data.data.references.trips[i].routeId, tripHeadsign: data.data.references.trips[i].tripHeadsign};
+      }
+
+      // Loading the routes into a hash table
+      var routes_hash = {};
+      for(var i = 0; i < data.data.references.routes.length; i++) {
+        routes_hash[data.data.references.routes[i].id] = data.data.references.routes[i].shortName;
+      }
+
+      console.log(data);
+  });
 }
 
 function drawBusses(callbackFunction) {
