@@ -39,9 +39,8 @@ $(document).ready(function() {
         console.log('faded');
   });
 */
-  console.log(map.getCenter().lat + ", " + map.getCenter().lng + ", " + Math.abs(map.getBounds()._northEast.lat - map.getBounds()._southWest.lat) + ", " + Math.abs(map.getBounds()._northEast.lng - map.getBounds()._southWest.lng));
 
-  drawNearbyBusses(map.getCenter().lat, map.getCenter().lng, Math.abs(map.getBounds()._northEast.lat - map.getBounds()._southWest.lat), Math.abs(map.getBounds()._northEast.lng - map.getBounds()._southWest.lng), function() {
+  getCurLocationAndDrawNearbyBusses(function() {
     $('#splashscreen').fadeOut(500);
     console.log('faded');
   });
@@ -50,7 +49,7 @@ $(document).ready(function() {
   map.on('locationfound', onLocationFound);
 
   map.on('moveend', function() {
-    drawNearbyBusses(map.getCenter().lat, map.getCenter().lng, Math.abs(map.getBounds()._northEast.lat - map.getBounds()._southWest.lat), Math.abs(map.getBounds()._northEast.lng - map.getBounds()._southWest.lng));
+    getCurLocationAndDrawNearbyBusses();
   });
 
   console.log(map.getCenter());
@@ -60,6 +59,10 @@ $(document).ready(function() {
 function onLocationFound(e) {
     var radius = e.accuracy / 2;
     L.circle(e.latlng, radius).addTo(map);
+}
+
+function getCurLocationAndDrawNearbyBusses(callbackFunction) {
+  drawNearbyBusses(map.getCenter().lat, map.getCenter().lng, Math.max(.04, Math.abs(map.getBounds()._northEast.lat - map.getBounds()._southWest.lat)), Math.max(.04, Math.abs(map.getBounds()._northEast.lng - map.getBounds()._southWest.lng), callbackFunction));
 }
 
 function drawNearbyBusses(lat, lon, latSpan, lonSpan, callbackFunction) {
