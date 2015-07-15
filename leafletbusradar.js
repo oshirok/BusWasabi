@@ -30,17 +30,31 @@ $(document).ready(function() {
   }).addTo(map);
 
   // Updates map every 15 seconds
-  setInterval(function() {drawBusses();}, 15000);
+  setInterval(function() {drawNearbyBusses(map.getCenter().lat, map.getCenter().lng, Math.abs(map.getBounds()._northEast.lat - map.getBounds()._southWest.lat), Math.abs(map.getBounds()._northEast.lng - map.getBounds()._southWest.lng));}, 15000);
 
   // Draws the busses on the map
+  /*
   drawBusses(function() { 
         $('#splashscreen').fadeOut(500);
         console.log('faded');
   });
-  drawNearbyBusses();
+*/
+  console.log(map.getCenter().lat + ", " + map.getCenter().lng + ", " + Math.abs(map.getBounds()._northEast.lat - map.getBounds()._southWest.lat) + ", " + Math.abs(map.getBounds()._northEast.lng - map.getBounds()._southWest.lng));
+
+  drawNearbyBusses(map.getCenter().lat, map.getCenter().lng, Math.abs(map.getBounds()._northEast.lat - map.getBounds()._southWest.lat), Math.abs(map.getBounds()._northEast.lng - map.getBounds()._southWest.lng), function() {
+    $('#splashscreen').fadeOut(500);
+    console.log('faded');
+  });
 
   map.locate({setView: true, maxZoom: 15});
   map.on('locationfound', onLocationFound);
+
+  map.on('moveend', function() {
+    drawNearbyBusses(map.getCenter().lat, map.getCenter().lng, Math.abs(map.getBounds()._northEast.lat - map.getBounds()._southWest.lat), Math.abs(map.getBounds()._northEast.lng - map.getBounds()._southWest.lng));
+  });
+
+  console.log(map.getCenter());
+  console.log(map.getBounds());
 });
 
 function onLocationFound(e) {
@@ -48,8 +62,9 @@ function onLocationFound(e) {
     L.circle(e.latlng, radius).addTo(map);
 }
 
-function drawNearbyBusses(callbackFunction) {
-  $.getJSON('http://api.pugetsound.onebusaway.org/api/where/trips-for-location.xml?key=TEST&lat=47.653&lon=-122.307&latSpan=0.008&lonSpan=0.008', function(data) {
+function drawNearbyBusses(lat, lon, latSpan, lonSpan, callbackFunction) {
+  console.log('http://api.onebusaway.org/api/where/trips-for-location.json?key=20db9014-d735-4e1f-bace-90f3e6651fc0&lat=' + lat + '&lon=' + lon + '&latSpan=' + latSpan + '&lonSpan=' + lonSpan + '&callback=?');
+  $.getJSON('http://api.onebusaway.org/api/where/trips-for-location.json?key=20db9014-d735-4e1f-bace-90f3e6651fc0&lat=' + lat + '&lon=' + lon + '&latSpan=' + latSpan + '&lonSpan=' + lonSpan + '&callback=?', function(data) {
       var trips_hash = {};
       for(var i = 0; i < data.data.references.trips.length; i++) {
         trips_hash[data.data.references.trips[i].id] = {routeId: data.data.references.trips[i].routeId, tripHeadsign: data.data.references.trips[i].tripHeadsign};
@@ -61,7 +76,56 @@ function drawNearbyBusses(callbackFunction) {
         routes_hash[data.data.references.routes[i].id] = data.data.references.routes[i].shortName;
       }
 
-      console.log(data);
+      var date = new Date();
+      for(var i = 0; i < data.data.references.trips.length; i++) {
+        $.getJSON('http://api.onebusaway.org/api/where/trip-details/' + data.data.references.trips[i].id + '.json?key=TEST&includetrip=FALSE&includeSchedule=FALSE&includeStatus=TRUE&callback=?', function(data) {
+              if(data.data.entry.status != null && date.getTime() - data.data.entry.status.lastUpdateTime < 600000) {
+                var marker;
+                if (busses[data.data.entry.status.vehicleId] != null) {
+                  if (data.data.entry.status.lastUpdateTime > busses[data.data.entry.status.vehicleId].gmarker.lastUpdateTime) {
+                    marker = busses[data.data.entry.status.vehicleId].gmarker;
+                    marker.setLatLng(new L.LatLng(data.data.entry.status.position.lat, data.data.entry.status.position.lon));
+                    marker.routeId = trips_hash[data.data.entry.tripId].routeId;
+                    marker.tripId = data.data.entry.tripId;
+                    marker.distance = data.data.entry.status.scheduledDistanceAlongTrip;
+                    marker.totalDistance = data.data.entry.status.totalDistanceAlongTrip;
+                    marker.curPoint = L.latLng(data.data.entry.status.position.lat, data.data.entry.status.position.lon);
+                    marker.lastUpdateTime = data.data.entry.status.lastUpdateTime;
+                    marker.scheduleDeviation = data.data.entry.status.scheduleDeviation;
+                    marker.getPopup().setContent('<p><b>' + routes_hash[trips_hash[data.data.entry.tripId].routeId] + ': ' + trips_hash[data.data.entry.tripId].tripHeadsign + '</b><br />Last Update: ' + '<span data-livestamp="' + data.data.entry.status.lastUpdateTime/1000 + '"></span>' + '<br/>' + 'Schedule Deviation: ' + data.data.entry.status.scheduleDeviation + '</p>');
+                    marker.getPopup().update();
+                    if (marker == activeMarker) drawLineOnRoute(marker.tripId, marker.lastUpdateTime, marker.curPoint);
+                  }
+                }
+                else {
+
+                  var temp_date = new Date(data.data.entry.status.lastUpdateTime);
+                  var cur_date = new Date();
+
+                  // Construct the marker and save data into the marker
+                  var marker = L.marker([data.data.entry.status.position.lat, data.data.entry.status.position.lon]).bindLabel(routes_hash[trips_hash[data.data.entry.tripId].routeId], { noHide: true }).on('click', onClick);
+                  marker.routeId = trips_hash[data.data.entry.tripId].routeId;
+                  marker.tripId = data.data.entry.tripId;
+                  marker.distance = data.data.entry.status.scheduledDistanceAlongTrip;
+                  marker.totalDistance = data.data.entry.status.totalDistanceAlongTrip;
+                  marker.curPoint = L.latLng(data.data.entry.status.position.lat, data.data.entry.status.position.lon);
+                  marker.lastUpdateTime = data.data.entry.status.lastUpdateTime;
+                  marker.scheduleDeviation = data.data.entry.status.scheduleDeviation;
+                  marker.popupContent = '<p><b>' + routes_hash[trips_hash[data.data.entry.tripId].routeId] + ': ' + trips_hash[data.data.entry.tripId].tripHeadsign + '</b><br />Last Update: ' + '<span data-livestamp="' + data.data.entry.status.lastUpdateTime/1000 + '"></span>' + '<br/>' + 'Schedule Deviation: ' + data.data.entry.status.scheduleDeviation + '</p>';
+                  marker.bindPopup(marker.popupContent);
+
+                  // Click binding to draw the route
+                  function onClick(e) {drawLineOnRoute(this.tripId, this.lastUpdateTime, this.curPoint); console.log(this.routeId); console.log(this.tripId); activeMarker = this}
+                  marker.addTo(map);
+
+                  var bus = {gmarker: marker, bus_id: data.data.entry.status.vehicleId};
+                  busses[data.data.entry.status.vehicleId] = bus;
+            }
+          }
+        });
+      }
+
+      if(callbackFunction != null) callbackFunction();
   });
 }
 
