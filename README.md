@@ -7,4 +7,4 @@ BusWasabi is a WebApp that displays the locations of busses in Seattle determine
 BusWasabi uses SoundTransit's OneBusAway API to obtain locations of busses, the bus schedules and routing information. BusWasabi uses the Leaflet mobile mapping framework along with several plugins to show the busses on the map.
 
 # Demo
-[http://students.washington.edu/oshiro/leafletbusradar.html](http://students.washington.edu/oshiro/leafletbusradar.html)
+[http://www.buswasabi.me](http://www.buswasabi.me)
