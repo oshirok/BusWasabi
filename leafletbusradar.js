@@ -7,6 +7,7 @@ var activeMarkers = {};
 
 $(document).ready(function() {
   // initialize the map on the "map" div with a given center and zoom
+  // UW Campus is the default location
   map = L.map('map', {
       center: [47.655, -122.308],
       zoom: 15,
